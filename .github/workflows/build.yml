@@ -1,0 +1,45 @@
+name: Build and Deploy CV
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile LaTeX
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: |
+            en.tex
+            pt-br.tex
+
+      - name: Install Ghostscript
+        run: sudo apt-get update && sudo apt-get install -y ghostscript
+
+      - name: Compress PDFs
+        run: |
+          gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile=murilo-alborghette-resume.pdf en.pdf
+          gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH -sOutputFile=murilo-alborghette-cv.pdf pt-br.pdf
+      
+      - name: Move PDFs to docs
+        run: |
+          mkdir -p docs
+          mv *-resume.pdf docs/
+          mv *-cv.pdf docs/
+
+      - name: Commit PDFs
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add docs/*.pdf
+          git commit -m "Update compiled CV PDFs" || echo "No changes to commit"
+          git push
